@@ -1,7 +1,7 @@
 import sys
 
 from scanner.port_scanner import scan_ports
-from scanner.service_detector import grab_banner
+from scanner.service_detector import identify_service
 from scanner.tls_checker import check_tls
 
 def main():
@@ -16,8 +16,9 @@ def main():
     print(f"Open ports on {target}: {open_ports}")
 
     for port in open_ports:
-        banner = grab_banner(target, port)
-        print(f"[{port}] Banner: {banner}")
+        service_info = identify_service(target, port)
+        print(f"[{port}] Service: {service_info['service']}")
+        print(f"[{port}] Banner: {service_info['banner']}")
 
         if port == 443:
             tls = check_tls(target)
