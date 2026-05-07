@@ -48,3 +48,25 @@ python3 -m http.server 8000
 ```
 
 Then scan `localhost` or `127.0.0.1`.
+
+## HTTPS Localhost Scan
+
+To test HTTPS scanning locally, create a self-signed certificate and key using OpenSSL:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+Accept the prompts or leave the fields blank as needed. Then start a local HTTPS server from the project root:
+
+```bash
+python3 scripts/https_server.py
+```
+
+This serves HTTPS on `https://127.0.0.1:4443` by default. Run the scanner against localhost or `127.0.0.1`:
+
+```bash
+python3 scripts/run_scan.py localhost
+```
+
+If port `4443` is open, the scanner will perform TLS checks on that service.
