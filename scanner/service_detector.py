@@ -22,7 +22,7 @@ def identify_service(host: str, port: int) -> dict:
                     result["service"] = "http"
 
             # HTTPS (handled separately usually)
-            elif port == 443:
+            elif port in [443, 4443]:
                 result["service"] = "https"
 
             # SSH (auto banner)

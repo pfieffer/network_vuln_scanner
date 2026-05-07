@@ -10,19 +10,22 @@ def main():
         return
 
     target = sys.argv[1]
-    ports = [22, 80, 443]
+    ports = [22, 80, 443, 4443]
 
     open_ports = scan_ports(target, ports)
     print(f"Open ports on {target}: {open_ports}")
 
     for port in open_ports:
-        service_info = identify_service(target, port)
-        print(f"[{port}] Service: {service_info['service']}")
-        print(f"[{port}] Banner: {service_info['banner']}")
-
-        if port == 443:
-            tls = check_tls(target)
+        # HTTPS ports
+        if port in [443, 4443]:
+            print(f"[{port}] Service: https")
+            tls = check_tls(target, port)
             print(f"[{port}] TLS Info: {tls}")
+
+        else:
+            service_info = identify_service(target, port)
+            print(f"[{port}] Service: {service_info['service']}")
+            print(f"[{port}] Banner: {service_info['banner']}")
 
 if __name__ == "__main__":
     main()
