@@ -12,7 +12,7 @@ def identify_service(host: str, port: int) -> dict:
             s.connect((host, port))
 
             # HTTP
-            if port in [80, 8080]:
+            if port in [80, 8080, 8081]:
                 request = f"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n"
                 s.send(request.encode())
                 data = s.recv(1024).decode(errors="ignore")
