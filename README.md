@@ -13,7 +13,7 @@
 python3 --version
 ```
 
-3. (Optional) Create a virtual environment:
+3. Create a virtual environment:
 
 ```bash
 python3 -m venv venv
@@ -21,7 +21,11 @@ source venv/bin/activate    # macOS/Linux
 venv\Scripts\activate     # Windows
 ```
 
-4. Install required packages if any are added later. Currently the scanner uses only the Python standard library.
+4. Install required packages:
+
+```bash
+pip install requests
+```
 
 ## Run
 
@@ -70,3 +74,24 @@ python3 scripts/run_scan.py localhost
 ```
 
 If port `4443` is open, the scanner will perform TLS checks on that service.
+
+
+## Testing Default Credentials
+
+To test the credential checker locally, start the basic auth server in one terminal:
+
+```bash
+python3 scripts/basic_auth_server.py
+```
+
+This starts a server on `http://localhost:8081` with default credentials:
+- Username: `admin`
+- Password: `admin`
+
+In another terminal, run the scanner:
+
+```bash
+python3 scripts/run_scan.py localhost
+```
+
+The scanner will detect port 8081, identify it as HTTP, and test the default credentials. If successful, you'll see the found credentials in the output.
