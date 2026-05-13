@@ -24,7 +24,7 @@ venv\Scripts\activate     # Windows
 4. Install required packages:
 
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 
 ## Run
@@ -76,22 +76,34 @@ python3 scripts/run_scan.py localhost
 If port `4443` is open, the scanner will perform TLS checks on that service.
 
 
+## Encrypted Credential Store
+
+The scanner now loads default credentials from an encrypted file at runtime and decrypts it with a user-provided password.
+
+Create the encrypted credential store before scanning:
+
+```bash
+python3 scripts/create_credential_store.py --password <your-password>
+```
+
+This writes `scanner/default_creds.enc` and secures the credential dictionary with AES-256-GCM.
+
 ## Testing Default Credentials
 
-To test the credential checker locally, start the basic auth server in one terminal:
+To test the credential checker locally, start the basic auth server in one terminal. The auth server loads credentials from the encrypted credential store, so provide the same password used to encrypt it:
 
 ```bash
-python3 scripts/basic_auth_server.py
+python3 scripts/basic_auth_server.py --cred-password <your-password>
 ```
 
-This starts a server on `http://localhost:8081` with default credentials:
-- Username: `admin`
-- Password: `admin`
+This starts a server on `http://localhost:8081` with the selected credential pair from `scanner/default_creds.enc`.
 
-In another terminal, run the scanner:
+In another terminal, run the scanner and provide the decryption password:
 
 ```bash
-python3 scripts/run_scan.py localhost
+python3 scripts/run_scan.py localhost --cred-password <your-password>
 ```
+
+If you omit `--cred-password`, the scanner will prompt for the password interactively.
 
 The scanner will detect port 8081, identify it as HTTP, and test the default credentials. If successful, you'll see the found credentials in the output.
