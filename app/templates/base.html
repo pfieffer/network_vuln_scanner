@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VulnScanner{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline; }
+        .severity-critical { background: #dc2626; color: white; }
+        .severity-high     { background: #ea580c; color: white; }
+        .severity-medium   { background: #ca8a04; color: white; }
+        .severity-low      { background: #16a34a; color: white; }
+        .severity-info     { background: #2563eb; color: white; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen" x-data="{ sidebarOpen: false }">
+
+    {% if current_user.is_authenticated %}
+    <!-- Sidebar -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+           class="fixed left-0 top-0 h-full w-64 bg-gray-800 border-r border-gray-700 z-50 transition-transform duration-300">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold text-emerald-400">🛡️ VulnScanner</h1>
+        </div>
+
+        <nav class="mt-4">
+            <a href="{{ url_for('scanner.dashboard') }}"
+               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition {% if request.endpoint == 'scanner.dashboard' %}bg-gray-700 text-white{% endif %}">
+                📊 Dashboard
+            </a>
+            <a href="{{ url_for('scanner.new_scan') }}"
+               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition {% if request.endpoint == 'scanner.new_scan' %}bg-gray-700 text-white{% endif %}">
+                🔍 New Scan
+            </a>
+            <a href="{{ url_for('scanner.history') }}"
+               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition {% if request.endpoint == 'scanner.history' %}bg-gray-700 text-white{% endif %}">
+                📜 Scan History
+            </a>
+            <a href="{{ url_for('auth.dashboard') }}"
+               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition">
+                👤 Profile / 2FA
+            </a>
+        </nav>
+
+        <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-semibold">{{ current_user.username }}</p>
+                    <p class="text-xs text-gray-400 capitalize">{{ current_user.roles[0].name if current_user.roles else 'N/A' }}</p>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300 text-sm">Logout</a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="{% if current_user.is_authenticated %}ml-64{% endif %}">
+        {% if current_user.is_authenticated %}
+        <button @click="sidebarOpen = !sidebarOpen"
+                class="fixed top-4 left-4 z-50 bg-gray-800 p-2 rounded-lg text-gray-300 hover:text-white">
+            ☰
+        </button>
+        {% endif %}
+
+        <div class="p-8">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-900/50 text-green-300{% elif category == 'danger' %}bg-red-900/50 text-red-300{% elif category == 'warning' %}bg-yellow-900/50 text-yellow-300{% else %}bg-blue-900/50 text-blue-300{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    {% else %}
+    {% block public_content %}{% endblock %}
+    {% endif %}
+
+</body>
+</html>

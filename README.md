@@ -27,7 +27,63 @@ venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
 
-## Run
+## Web Application
+
+The scanner includes a Flask web application with authentication and role-based access control (RBAC).
+
+### Starting the Web App
+
+From the project root, run:
+
+```bash
+flask --app app run
+```
+
+This starts the Flask development server on `http://localhost:5000`.
+
+### User Management
+
+The application supports three user roles:
+
+- **admin**: Full access (read, write, delete, scan, export)
+- **analyst**: Can perform scans and export reports (read, write, scan, export)
+- **viewer**: Read-only access (read)
+
+#### Create a New User
+
+To create a user with a specific role:
+
+```bash
+flask --app app create-user
+```
+
+You will be prompted to enter:
+- Username
+- Email
+- Password
+- Role (admin, analyst, or viewer)
+
+Example:
+
+```bash
+flask --app app create-user --username admin1 --email admin@example.com --password securepass123 --role admin
+flask --app app create-user --username analyst1 --email analyst@example.com --password securepass456 --role analyst
+flask --app app create-user --username viewer1 --email viewer@example.com --password securepass789 --role viewer
+```
+
+#### List All Users
+
+To view all users and their assigned roles:
+
+```bash
+flask --app app list-users
+```
+
+### 2FA Setup (Optional)
+
+Users can optionally enable Two-Factor Authentication (2FA) on their accounts. After logging in, users can set up 2FA by scanning a QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, etc.).
+
+## Command-Line Scanner
 
 From the project root, run:
 

@@ -1,2 +1,11 @@
-requests
-cryptography
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+python-dotenv==1.0.1
+pyotp==2.9.0
+qrcode[pil]==7.4.2
+requests==2.31.0
+cryptography==42.0.5
+python-nmap==0.7.1
+click==8.1.7
+Pillow==10.3.0

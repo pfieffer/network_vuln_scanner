@@ -1,45 +1,83 @@
-import socket
+import nmap
+import traceback
 
-def identify_service(host: str, port: int) -> dict:
-    result = {
-        "service": "unknown",
-        "banner": ""
-    }
+nmap_path = '/opt/homebrew/bin/nmap'
 
+if nmap_path:
+    nmap.PortScanner.nmap_path = nmap_path
+
+def identify_services(target, ports):
+    """Identify services running on open ports."""
+    services = {}
+    
     try:
-        with socket.socket() as s:
-            s.settimeout(2)
-            s.connect((host, port))
-
-            # HTTP
-            if port in [80, 8080, 8081]:
-                request = f"GET / HTTP/1.1\r\nHost: {host}\r\n\r\n"
-                s.send(request.encode())
-                data = s.recv(1024).decode(errors="ignore")
-
-                result["banner"] = data
-                if "HTTP" in data:
-                    result["service"] = "http"
-
-            # HTTPS (handled separately usually)
-            elif port in [443, 4443]:
-                result["service"] = "https"
-
-            # SSH (auto banner)
-            elif port == 22:
-                data = s.recv(1024).decode(errors="ignore")
-                result["banner"] = data
-                if "SSH" in data:
-                    result["service"] = "ssh"
-
-            # FTP
-            elif port == 21:
-                data = s.recv(1024).decode(errors="ignore")
-                result["banner"] = data
-                if "FTP" in data:
-                    result["service"] = "ftp"
-
-    except Exception:
-        pass
-
-    return result
+        nm = nmap.PortScanner()
+        print(f"🔍 Running service detection on {target}...")
+        
+        nm.scan(target, arguments=f'-p {",".join(map(str, ports))} -sV --version-intensity 5')
+        
+        hosts = nm.all_hosts()
+        if not hosts:
+            return {'service': 'Error', 'banner': 'No hosts found'}
+        
+        host_key = str(hosts[0])
+        print(f"✅ Using host key: {host_key}")
+        
+        host_data = nm[host_key]
+        
+        # ✅ Port data is under ['tcp'] key!
+        if 'tcp' not in host_data:
+            return {'service': 'Error', 'banner': 'No TCP data found'}
+        
+        tcp_data = host_data['tcp']
+        print(f"📋 TCP ports found: {list(tcp_data.keys())}")
+        
+        for port in ports:
+            try:
+                port_key = int(port)
+                
+                if port_key not in tcp_data:
+                    print(f"  ⚠️ Port {port}: Not in TCP data")
+                    continue
+                
+                port_data = tcp_data[port_key]
+                print(f"  📦 Port {port} data: {port_data}")
+                
+                # Extract service name
+                service_name = (
+                    port_data.get('name', 'unknown') or
+                    port_data.get('product', 'unknown') or
+                    'unknown'
+                )
+                
+                # Extract version
+                version_info = (
+                    port_data.get('version', '') or
+                    port_data.get('extrainfo', '') or
+                    ''
+                )
+                
+                if isinstance(version_info, list):
+                    version_info = ' '.join(map(str, version_info))
+                
+                services[port] = {
+                    'service': str(service_name),
+                    'version': str(version_info) if version_info else 'N/A'
+                }
+                
+                print(f"  ✅ Port {port}: {service_name} v{version_info}")
+                
+            except Exception as e:
+                print(f"  ⚠️ Port {port}: Error - {e}")
+                continue
+        
+        print(f"📊 Services found: {services}")
+        return services
+        
+    except nmap.PortScannerError as e:
+        print(f"❌ Nmap error: {e}")
+        return {'service': 'Error', 'banner': str(e)}
+    except Exception as e:
+        print(f"❌ Service detection error: {e}")
+        traceback.print_exc()
+        return {'service': 'Error', 'banner': str(e)}
