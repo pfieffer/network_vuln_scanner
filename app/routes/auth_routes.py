@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, logout_user, current_user
-from app.auth import register_user, login_user_logic, setup_2fa, enable_2fa, disable_2fa
+from app.auth import register_user, login_user_logic, setup_2fa as setup_2fa_auth, enable_2fa as enable_2fa_auth, disable_2fa as disable_2fa_auth, generate_qr_code
 from app.rbac import role_required
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates')
@@ -17,14 +17,27 @@ def login():
         password = request.form.get('password')
         two_fa = request.form.get('two_fa', '').strip()
 
-        success, result = login_user_logic(username, password, two_fa if two_fa else None)
-
-        if success:
-            flash(result, 'success')
+        # Check if user exists and password is correct first
+        from app.models import User
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            # If 2FA is enabled, require the token
+            if user.two_fa_enabled:
+                if not two_fa:
+                    flash('2FA code required', 'warning')
+                    return render_template('login.html', show_2fa=True, username=username)
+                elif not user.verify_totp(two_fa):
+                    flash('Invalid 2FA code', 'danger')
+                    return render_template('login.html', show_2fa=True, username=username)
+            
+            # Login successful
+            from flask_login import login_user
+            login_user(user)
+            flash('Login successful', 'success')
             next_page = request.args.get('next')
             return redirect(next_page or url_for('scanner.dashboard'))
         else:
-            flash(result, 'danger')
+            flash('Invalid username or password', 'danger')
 
     return render_template('login.html')
 
@@ -72,17 +85,40 @@ def setup_2fa():
         flash('2FA is already enabled', 'warning')
         return redirect(url_for('auth.dashboard'))
 
+    # Generate QR code on GET request
+    if request.method == 'GET':
+        # Check if user already has a secret
+        if current_user.totp_secret:
+            # Use existing secret
+            totp_uri = current_user.get_totp_uri()
+            qr_code = generate_qr_code(totp_uri)
+            secret = current_user.totp_secret
+        else:
+            # Generate new secret
+            success, result = setup_2fa_auth(current_user.id)
+            if success:
+                qr_code = result['qr_code']
+                secret = result['secret']
+            else:
+                flash(result, 'danger')
+                return redirect(url_for('auth.dashboard'))
+        
+        session['two_fa_secret'] = secret
+        session['two_fa_qr'] = qr_code
+        return render_template('2fa_setup.html', qr_code=qr_code, secret=secret)
+
+    # Handle POST request (enabling 2FA)
     if request.method == 'POST':
-        success, result = setup_2fa(current_user.id)
+        success, result = enable_2fa_auth(current_user.id, request.form.get('token', '').strip())
         if success:
-            session['two_fa_secret'] = result['secret']
-            session['two_fa_qr'] = result['qr_code']
-            flash('Scan the QR code with your authenticator app, then enter a code to confirm.', 'success')
-            return render_template('2fa_setup.html', qr_code=result['qr_code'])
+            flash(result, 'success')
+            return redirect(url_for('auth.dashboard'))
         else:
             flash(result, 'danger')
-
-    return render_template('2fa_setup.html')
+            # Re-render with QR code from session
+            return render_template('2fa_setup.html', 
+                                 qr_code=session.get('two_fa_qr'), 
+                                 secret=session.get('two_fa_secret'))
 
 
 # ─── Enable 2FA ──────────────────────────────────────────────
@@ -90,14 +126,17 @@ def setup_2fa():
 @login_required
 def enable_2fa():
     token = request.form.get('token', '').strip()
-    success, result = enable_2fa(current_user.id, token)
+    success, result = enable_2fa_auth(current_user.id, token)
 
     if success:
         flash(result, 'success')
+        # Clear session data
+        session.pop('two_fa_secret', None)
+        session.pop('two_fa_qr', None)
+        return redirect(url_for('auth.dashboard'))
     else:
         flash(result, 'danger')
-
-    return redirect(url_for('auth.dashboard'))
+        return redirect(url_for('auth.setup_2fa'))
 
 
 # ─── Disable 2FA ─────────────────────────────────────────────
@@ -105,7 +144,7 @@ def enable_2fa():
 @login_required
 def disable_2fa():
     token = request.form.get('token', '').strip()
-    success, result = disable_2fa(current_user.id, token)
+    success, result = disable_2fa_auth(current_user.id, token)
 
     if success:
         flash(result, 'success')
@@ -119,4 +158,4 @@ def disable_2fa():
 @auth_bp.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', user=current_user)
+    return render_template('profile.html', user=current_user)
