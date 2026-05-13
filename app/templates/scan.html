@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}New Scan — VulnScanner{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h2 class="text-3xl font-bold text-white mb-2">New Scan</h2>
+    <p class="text-gray-400 mb-8">Configure and launch a vulnerability scan</p>
+
+    <div class="bg-gray-800 rounded-xl border border-gray-700 p-8">
+        <form method="POST" action="{{ url_for('scanner.run_scan') }}" id="scanForm"
+              hx-post="{{ url_for('scanner.run_scan') }}"
+              hx-target="#scanResults"
+              hx-swap="innerHTML">
+
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Host</label>
+                    <input type="text" name="target" required placeholder="e.g. 192.168.1.1 or example.com"
+                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Scan Type</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center p-4 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition border-2 border-transparent has-[:checked]:border-emerald-500">
+                            <input type="checkbox" name="scan_type" value="port" checked class="mr-3 accent-emerald-500">
+                            <div>
+                                <p class="font-semibold text-white">Port Scan</p>
+                                <p class="text-xs text-gray-400">Open ports & services</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-4 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition border-2 border-transparent has-[:checked]:border-emerald-500">
+                            <input type="checkbox" name="scan_type" value="tls" checked class="mr-3 accent-emerald-500">
+                            <div>
+                                <p class="font-semibold text-white">TLS Check</p>
+                                <p class="text-xs text-gray-400">Certificate & protocol</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-4 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition border-2 border-transparent has-[:checked]:border-emerald-500">
+                            <input type="checkbox" name="scan_type" value="creds" class="mr-3 accent-emerald-500">
+                            <div>
+                                <p class="font-semibold text-white">Default Creds</p>
+                                <p class="text-xs text-gray-400">Common password check</p>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-4 bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-600 transition border-2 border-transparent has-[:checked]:border-emerald-500">
+                            <input type="checkbox" name="scan_type" value="service" checked class="mr-3 accent-emerald-500">
+                            <div>
+                                <p class="font-semibold text-white">Service Detect</p>
+                                <p class="text-xs text-gray-400">Banner grabbing</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Ports (comma-separated)</label>
+                    <input type="text" name="ports" placeholder="e.g. 22,80,443,8080,3306"
+                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
+                </div>
+
+                <button type="submit"
+                        class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition text-lg">
+                    Start Scan
+                </button>
+            </div>
+        </form>
+
+        <!-- Results appear here via HTMX -->
+        <div id="scanResults" class="mt-8"></div>
+    </div>
+</div>
+{% endblock %}

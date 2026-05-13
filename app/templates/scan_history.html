@@ -1,0 +1,92 @@
+{% if results %}
+<div class="bg-gray-900 rounded-xl border border-gray-700 p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-white">📋 Scan Results: {{ results.target }}</h3>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold severity-{{ results.severity|default('info') }}">
+            {{ results.severity|default('info')|capitalize }}
+        </span>
+    </div>
+
+    <div class="space-y-4">
+
+        <!-- Open Ports -->
+        {% if results.open_ports %}
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h4 class="font-semibold text-emerald-400 mb-2">🔓 Open Ports</h4>
+            <div class="flex flex-wrap gap-2">
+                {% for port in results.open_ports %}
+                <span class="px-3 py-1 bg-gray-700 rounded-full text-sm font-mono">{{ port }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Services ✅ FIXED: Now handles DICT not LIST -->
+        {% if results.services %}
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h4 class="font-semibold text-blue-400 mb-2">🔧 Services</h4>
+            {% for port, svc in results.services.items() %}
+            <div class="mb-3">
+                <span class="font-mono text-white">Port {{ port }}:</span>
+                <span class="text-gray-300 ml-2">{{ svc.service }}</span>
+                {% if svc.version %}
+                <p class="text-xs text-gray-500 mt-1 font-mono truncate max-w-md">{{ svc.version[:100] }}...</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- TLS Info -->
+        {% if results.tls %}
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h4 class="font-semibold text-yellow-400 mb-2">🔐 TLS Info</h4>
+            <p class="text-sm text-gray-300"><strong>Issuer:</strong> {{ results.tls.issuer }}</p>
+            <p class="text-sm text-gray-300"><strong>Expires:</strong> {{ results.tls.expiry }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Credential Findings -->
+        {% if results.creds and results.creds.findings %}
+        <div class="bg-red-900/30 rounded-lg p-4 border border-red-800">
+            <h4 class="font-semibold text-red-400 mb-2">⚠️ Default Credentials Found!</h4>
+            {% for f in results.creds.findings %}
+            <div class="mb-1 text-sm font-mono text-red-300">
+                {{ f.username }} : {{ f.password }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Recommendations ✅ FIXED: Complete Jinja2 condition -->
+        <div class="bg-gray-800 rounded-lg p-4">
+            <h4 class="font-semibold text-purple-400 mb-2">💡 Recommendations</h4>
+            <ul class="list-disc list-inside text-sm text-gray-300 space-y-1">
+                {% if results.tls and results.tls.valid == false %}
+                <li>TLS handshake failed — investigate certificate configuration</li>
+                {% endif %}
+                {% if results.creds and results.creds.findings %}
+                <li>Change default credentials immediately</li>
+                {% endif %}
+                {% if results.open_ports|length > 5 %}
+                <li>Unusually high number of open ports — review firewall rules</li>
+                {% endif %}
+                <li>Enable 2FA on all exposed services</li>
+                <li>Keep all services updated to latest versions</li>
+            </ul>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="flex gap-3">
+            <a href="{{ url_for('scanner.export_csv', scan_id=results.id) }}"
+               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition">
+                📥 Export CSV
+            </a>
+            <a href="{{ url_for('scanner.export_json', scan_id=results.id) }}"
+               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition">
+                📥 Export JSON
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
