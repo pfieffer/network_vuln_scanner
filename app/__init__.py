@@ -4,6 +4,13 @@ from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 
+# Register blueprints
+from app.routes.auth_routes import auth_bp
+from app.routes.scanner_routes import scanner_bp
+
+from app.models import User, Role
+
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 
@@ -18,18 +25,13 @@ def create_app():
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
 
-    from app.models import User, Role
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Register blueprints
-    from app.routes.auth_routes import auth_bp
-    from app.routes.scanner_routes import scanner_bp
-
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(scanner_bp, url_prefix='/scan')
-    
+
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
