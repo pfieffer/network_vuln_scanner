@@ -10,10 +10,12 @@ jobs:
         python-version: ["3.14.4"]
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -23,20 +25,15 @@ jobs:
         run: |
           pylint $(git ls-files '*.py') \
             --output-format=colorized \
-            --score=no \
             | tee pylint-output.txt
 
       - name: 📊 Pylint Score Summary
         run: |
-          set +e  # ✅ Don't exit on errors
-          
           echo "## 📊 Pylint Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          grep "rated at" pylint-output.txt >> $GITHUB_STEP_SUMMARY || echo "No rating found" >> $GITHUB_STEP_SUMMARY
+          grep "rated at" pylint-output.txt || echo "No rating found" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           grep -E "^(E|W|R|C)\d{4}" pylint-output.txt | \
-            awk '{print "|", $1, "|", $NF, "|"}' >> $GITHUB_STEP_SUMMARY || echo "| No issues | |" >> $GITHUB_STEP_SUMMARY
-          
-          set -e  # ✅ Re-enable exit on error
+            awk '{print "|", $1, "|", $NF, "|"}' || echo "| No issues | |" >> $GITHUB_STEP_SUMMARY
