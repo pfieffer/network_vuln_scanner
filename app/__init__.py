@@ -4,18 +4,17 @@ from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 
-# Register blueprints
-from app.routes.auth_routes import auth_bp
-from app.routes.scanner_routes import scanner_bp
-
-from app.models import User, Role
-
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
+
+    # Import models and blueprints after extensions are initialized
+    from app.models import User, Role
+    from app.routes.auth_routes import auth_bp
+    from app.routes.scanner_routes import scanner_bp
     app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///scanner.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
