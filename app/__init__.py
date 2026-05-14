@@ -42,7 +42,10 @@ def create_app():
             ('analyst',  ['read', 'write', 'scan', 'export']),
             ('viewer',   ['read'])
         ]:
-            if not Role.query.filter_by(name=role_name).first():
+            role = Role.query.filter_by(name=role_name).first()
+            if role:
+                role.permissions = permissions
+            else:
                 role = Role(name=role_name, permissions=permissions)
                 db.session.add(role)
         db.session.commit()
