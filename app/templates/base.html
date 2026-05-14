@@ -42,7 +42,7 @@
                 📜 Scan History
             </a>
             <a href="{{ url_for('auth.dashboard') }}"
-               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition">
+               class="flex items-center px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition {% if request.endpoint == 'auth.dashboard' %}bg-gray-700 text-white{% endif %}">
                 👤 Profile / 2FA
             </a>
         </nav>

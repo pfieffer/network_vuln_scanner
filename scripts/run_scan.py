@@ -7,7 +7,7 @@ ROOT_PATH = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_PATH))
 
 from scanner.port_scanner import scan_ports
-from scanner.service_detector import identify_service
+from scanner.service_detector import identify_services
 from scanner.tls_checker import check_tls
 from scanner.credential_checker import check_default_credentials
 
@@ -41,7 +41,7 @@ def main():
             tls = check_tls(target, port)
             print(f"[{port}] TLS Info: {tls}")
         else:
-            service_info = identify_service(target, port)
+            service_info = identify_services(target, port)
             print(f"[{port}] Service: {service_info['service']}")
             print(f"[{port}] Banner: {service_info['banner']}")
 

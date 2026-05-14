@@ -11,3 +11,9 @@ __pycache__/
 venv/
 
 instance/scanner.db
+
+# Pylint artifacts
+pylint-output.txt
+pylint-report.json
+pylint-report.html
+.pylint_cache/

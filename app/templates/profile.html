@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Profile — VulnScanner{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-white">👤 Profile Settings</h2>
+        <p class="text-gray-400 mt-1">Manage your account and security settings</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Account Info -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <h3 class="text-xl font-bold text-white mb-4">Account Information</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Username</label>
+                    <p class="text-white font-mono">{{ current_user.username }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Email</label>
+                    <p class="text-white">{{ current_user.email }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Role</label>
+                    <p class="text-white capitalize">{{ current_user.roles[0].name if current_user.roles else 'N/A' }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Member Since</label>
+                    <p class="text-white">{{ current_user.created_at.strftime('%B %d, %Y') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2FA Settings -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <h3 class="text-xl font-bold text-white mb-4">🔐 Two-Factor Authentication</h3>
+
+            {% if current_user.two_fa_enabled %}
+            <div class="mb-4">
+                <div class="flex items-center text-green-400 mb-2">
+                    <span class="text-lg mr-2">✅</span>
+                    <span class="font-semibold">2FA is enabled</span>
+                </div>
+                <p class="text-sm text-gray-400">Your account is protected with two-factor authentication.</p>
+            </div>
+
+            <!-- Disable 2FA -->
+            <form method="POST" action="{{ url_for('auth.disable_2fa') }}" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Enter 2FA Code to Disable</label>
+                    <input type="text" name="token" required maxlength="6" placeholder="6-digit code"
+                           class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-red-500 outline-none text-center text-xl tracking-widest">
+                </div>
+                <button type="submit"
+                        class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition">
+                    Disable 2FA
+                </button>
+            </form>
+            {% else %}
+            <div class="mb-4">
+                <div class="flex items-center text-yellow-400 mb-2">
+                    <span class="text-lg mr-2">⚠️</span>
+                    <span class="font-semibold">2FA is not enabled</span>
+                </div>
+                <p class="text-sm text-gray-400">Add an extra layer of security to your account.</p>
+            </div>
+
+            <a href="{{ url_for('auth.setup_2fa') }}"
+               class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition text-center inline-block">
+                Setup 2FA
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Security Tips -->
+    <div class="mt-8 bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h3 class="text-xl font-bold text-white mb-4">🛡️ Security Recommendations</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex items-start space-x-3">
+                <span class="text-emerald-400 text-xl">🔐</span>
+                <div>
+                    <h4 class="text-white font-semibold">Enable 2FA</h4>
+                    <p class="text-sm text-gray-400">Use two-factor authentication for enhanced security.</p>
+                </div>
+            </div>
+            <div class="flex items-start space-x-3">
+                <span class="text-blue-400 text-xl">🔑</span>
+                <div>
+                    <h4 class="text-white font-semibold">Strong Password</h4>
+                    <p class="text-sm text-gray-400">Use a unique, complex password for your account.</p>
+                </div>
+            </div>
+            <div class="flex items-start space-x-3">
+                <span class="text-yellow-400 text-xl">📱</span>
+                <div>
+                    <h4 class="text-white font-semibold">Authenticator App</h4>
+                    <p class="text-sm text-gray-400">Use Google Authenticator or similar for 2FA codes.</p>
+                </div>
+            </div>
+            <div class="flex items-start space-x-3">
+                <span class="text-purple-400 text-xl">🔄</span>
+                <div>
+                    <h4 class="text-white font-semibold">Regular Updates</h4>
+                    <p class="text-sm text-gray-400">Keep your authenticator app and devices updated.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
