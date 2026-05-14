@@ -6,10 +6,11 @@
     <p class="text-gray-400 mb-8">Configure and launch a vulnerability scan</p>
 
     <div class="bg-gray-800 rounded-xl border border-gray-700 p-8">
-        <form method="POST" action="{{ url_for('scanner.run_scan') }}" id="scanForm"
+        <form method="POST" action="{{ url_for('scanner.run_scan') }}" id="scanForm" class="js-progress-form"
               hx-post="{{ url_for('scanner.run_scan') }}"
               hx-target="#scanResults"
-              hx-swap="innerHTML">
+              hx-swap="innerHTML"
+              hx-indicator="#scanLoading">
 
             <div class="space-y-6">
                 <div>
@@ -58,10 +59,15 @@
                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
                 </div>
 
-                <button type="submit"
+                <button type="submit" data-loading-text="Scanning..."
                         class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition text-lg">
                     Start Scan
                 </button>
+
+                <div id="scanLoading" class="htmx-indicator hidden items-center gap-2 rounded-lg border border-gray-700 bg-gray-700 px-4 py-3 text-sm text-gray-200 mt-6">
+                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    Running scan... this may take a moment.
+                </div>
             </div>
         </form>
 
