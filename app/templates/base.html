@@ -10,7 +10,11 @@
     <style>
         [x-cloak] { display: none !important; }
         .htmx-indicator { display: none; }
-        .htmx-request .htmx-indicator { display: inline; }
+        .htmx-request.htmx-indicator { display: inline-flex !important; }
+        .loading-button {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
         .severity-critical { background: #dc2626; color: white; }
         .severity-high     { background: #ea580c; color: white; }
         .severity-medium   { background: #ca8a04; color: white; }
@@ -85,5 +89,47 @@
     {% block public_content %}{% endblock %}
     {% endif %}
 
+    <script>
+        function setLoadingState(button, show) {
+            if (!button) return;
+            if (show) {
+                button.disabled = true;
+                button.dataset.originalHtml = button.dataset.originalHtml || button.innerHTML;
+                button.innerHTML = button.dataset.loadingText || 'Please wait...';
+                button.classList.add('loading-button');
+            } else {
+                button.disabled = false;
+                if (button.dataset.originalHtml) {
+                    button.innerHTML = button.dataset.originalHtml;
+                }
+                button.classList.remove('loading-button');
+            }
+        }
+
+        document.addEventListener('htmx:beforeRequest', function (event) {
+            const form = event.target.closest('form');
+            const button = form?.querySelector('[type="submit"]');
+            if (button) {
+                setLoadingState(button, true);
+            }
+        });
+
+        document.addEventListener('htmx:afterRequest', function (event) {
+            const form = event.target.closest('form');
+            const button = form?.querySelector('[type="submit"]');
+            if (button) {
+                setLoadingState(button, false);
+            }
+        });
+
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            const button = form.querySelector('[type="submit"]');
+            if (button) {
+                setLoadingState(button, true);
+            }
+        });
+    </script>
 </body>
 </html>
