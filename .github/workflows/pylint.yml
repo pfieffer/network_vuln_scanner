@@ -28,11 +28,15 @@ jobs:
 
       - name: 📊 Pylint Score Summary
         run: |
+          set +e  # ✅ Don't exit on errors
+          
           echo "## 📊 Pylint Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          grep "rated at" pylint-output.txt >> $GITHUB_STEP_SUMMARY
+          grep "rated at" pylint-output.txt >> $GITHUB_STEP_SUMMARY || echo "No rating found" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           grep -E "^(E|W|R|C)\d{4}" pylint-output.txt | \
-            awk '{print "|", $1, "|", $NF, "|"}' >> $GITHUB_STEP_SUMMARY
+            awk '{print "|", $1, "|", $NF, "|"}' >> $GITHUB_STEP_SUMMARY || echo "| No issues | |" >> $GITHUB_STEP_SUMMARY
+          
+          set -e  # ✅ Re-enable exit on error
