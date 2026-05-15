@@ -17,3 +17,9 @@ pylint-output.txt
 pylint-report.json
 pylint-report.html
 .pylint_cache/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+.coverage
+.coverage.*
