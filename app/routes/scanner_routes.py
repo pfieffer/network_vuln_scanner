@@ -30,10 +30,7 @@ def new_scan():
 @permission_required('read')
 def dashboard():
     """Render the dashboard with recent scans."""
-    if current_user.has_role('admin'):
-        scans = ScanSession.query.order_by(ScanSession.created_at.desc()).limit(10).all()
-    else:
-        scans = ScanSession.query.filter(ScanSession.user_id == current_user.id).order_by(ScanSession.created_at.desc()).limit(10).all()
+    scans = ScanSession.query.order_by(ScanSession.created_at.desc()).limit(10).all()
     critical_count = sum(1 for s in scans if s.severity == 'critical')
     high_count = sum(1 for s in scans if s.severity == 'high')
     return render_template('dashboard.html', scans=scans, critical_count=critical_count, high_count=high_count)
@@ -44,10 +41,7 @@ def dashboard():
 @permission_required('read')
 def history():
     """Render the scan history page."""
-    if current_user.has_role('admin'):
-        scans = ScanSession.query.order_by(ScanSession.created_at.desc()).all()
-    else:
-        scans = ScanSession.query.filter(ScanSession.user_id == current_user.id).order_by(ScanSession.created_at.desc()).all()
+    scans = ScanSession.query.order_by(ScanSession.created_at.desc()).all()
     return render_template('scan_history.html', scans=scans)
 
 
@@ -130,7 +124,7 @@ def run_scan():
     print(f"📊 Final results: {results}")
     print(f"{'=' * 50}\n")
 
-    return render_template('scan_results.html', results=results, scan_id=scan_session.id)
+    return render_template('scan_results.html', results=results, scan=scan_session, scan_id=scan_session.id)
 
 
 @scanner_bp.route('/detail/<int:scan_id>')
@@ -139,10 +133,10 @@ def run_scan():
 def scan_detail(scan_id):
     """Show detailed results for a scan."""
     scan = ScanSession.query.get_or_404(scan_id)
-    if not current_user.has_role('admin') and scan.user_id != current_user.id:
+    if not (current_user.has_role('admin') or current_user.has_role('viewer') or current_user.has_role('analyst')) and scan.user_id != current_user.id:
         abort(404)
     results = json.loads(scan.results) if scan.results else {}
-    return render_template('scan_results.html', results=results, scan_id=scan.id)
+    return render_template('scan_results.html', results=results, scan=scan, scan_id=scan.id)
 
 
 @scanner_bp.route('/export/csv/<int:scan_id>')
@@ -151,7 +145,7 @@ def scan_detail(scan_id):
 def export_csv(scan_id):
     """Export scan results as CSV."""
     scan = ScanSession.query.get_or_404(scan_id)
-    if not current_user.has_role('admin') and scan.user_id != current_user.id:
+    if not (current_user.has_role('admin') or current_user.has_role('viewer') or current_user.has_role('analyst')) and scan.user_id != current_user.id:
         abort(404)
     results = json.loads(scan.results) if scan.results else {}
 
@@ -180,7 +174,7 @@ def export_csv(scan_id):
 def export_json(scan_id):
     """Export scan results as JSON."""
     scan = ScanSession.query.get_or_404(scan_id)
-    if not current_user.has_role('admin') and scan.user_id != current_user.id:
+    if not (current_user.has_role('admin') or current_user.has_role('viewer') or current_user.has_role('analyst')) and scan.user_id != current_user.id:
         abort(404)
     return Response(
         scan.results,
@@ -196,7 +190,7 @@ def filter_scans():
     """Filter scans by search query."""
     search = request.args.get('q', '')
     base_query = ScanSession.query.filter(ScanSession.target.contains(search))
-    if not current_user.has_role('admin'):
+    if not (current_user.has_role('admin') or current_user.has_role('viewer')):
         base_query = base_query.filter(ScanSession.user_id == current_user.id)
     scans = base_query.order_by(ScanSession.created_at.desc()).all()
     return render_template('scan_history.html', scans=scans)

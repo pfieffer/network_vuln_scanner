@@ -1,6 +1,6 @@
 import click
 
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 
@@ -34,6 +34,22 @@ def create_app():
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        """Handle 403 Forbidden errors."""
+        return render_template('error.html',
+                             error_code=403,
+                             error_message='Access Denied',
+                             error_description='You do not have permission to access this resource. This action requires elevated privileges.'), 403
+
+    @app.errorhandler(404)
+    def not_found(e):
+        """Handle 404 Not Found errors."""
+        return render_template('error.html',
+                             error_code=404,
+                             error_message='Page Not Found',
+                             error_description='The resource you are looking for does not exist or has been removed.'), 404
 
     with app.app_context():
         db.create_all()
