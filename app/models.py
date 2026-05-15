@@ -2,6 +2,7 @@ from app import db, login_manager
 from flask_login import UserMixin
 from datetime import datetime
 import bcrypt
+import json
 
 # Association table: users <-> roles (many-to-many)
 user_roles = db.Table('user_roles',
@@ -74,6 +75,29 @@ class ScanSession(db.Model):
     severity = db.Column(db.String(20), nullable=True)  # 'critical', 'high', 'medium', 'low'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    @property
+    def results_data(self):
+        try:
+            return json.loads(self.results) if self.results else {}
+        except (TypeError, ValueError):
+            return {}
+
+    @property
+    def open_ports(self):
+        return self.results_data.get('open_ports', [])
+
+    @property
+    def services(self):
+        return self.results_data.get('services', {})
+
+    @property
+    def tls(self):
+        return self.results_data.get('tls')
+
+    @property
+    def creds(self):
+        return self.results_data.get('creds')
 
     def __repr__(self):
         return f'<Scan {self.target} by {self.user.username}>'
