@@ -1,4 +1,4 @@
-import click
+"""Network Vulnerability Scanner - Application Factory."""
 
 from flask import Flask, redirect, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -8,13 +8,18 @@ from flask_login import LoginManager
 db = SQLAlchemy()
 login_manager = LoginManager()
 
+
 def create_app():
+    """Create Flask application."""
     app = Flask(__name__)
+
+    import click
 
     # Import models and blueprints after extensions are initialized
     from app.models import User, Role
     from app.routes.auth_routes import auth_bp
     from app.routes.scanner_routes import scanner_bp
+
     app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///scanner.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -66,6 +71,7 @@ def create_app():
                 db.session.add(role)
         db.session.commit()
 
+        # 👇 CLI commands — click is already imported above
         @app.cli.command('create-user')
         @click.option('--username', prompt=True, help='Username')
         @click.option('--email', prompt=True, help='Email')

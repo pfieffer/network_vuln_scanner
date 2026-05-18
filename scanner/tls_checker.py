@@ -3,7 +3,19 @@ import socket
 from datetime import datetime
 
 def check_tls(target, ports, timeout=3):
-    """Check TLS certificate validity on candidate ports."""
+    """Check TLS certificate validity on candidate ports.
+    
+    IMPORTANT: Target and ports are pre-validated by the route handler using app.validators
+    module. This function assumes inputs are safe to use for socket connections.
+    
+    Args:
+        target (str): Pre-validated target IP, domain, or IPv6 address
+        ports (list): Pre-validated list of integers representing ports to check (1-65535)
+        timeout (int): Socket timeout in seconds
+        
+    Returns:
+        dict: Dictionary mapping port numbers to TLS certificate information
+    """
     results = {}
     
     for port in ports:

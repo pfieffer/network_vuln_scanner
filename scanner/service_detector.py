@@ -7,7 +7,18 @@ if nmap_path:
     nmap.PortScanner.nmap_path = nmap_path
 
 def identify_services(target, ports):
-    """Identify services running on open ports."""
+    """Identify services running on open ports.
+    
+    IMPORTANT: Target and ports are pre-validated by the route handler using app.validators
+    module. This function assumes inputs are safe to pass to nmap.
+    
+    Args:
+        target (str): Pre-validated target IP, CIDR, domain, or IPv6 address
+        ports (list): Pre-validated list of integers representing open ports (1-65535)
+        
+    Returns:
+        dict: Dictionary mapping port numbers to service information (name, product, version)
+    """
     services = {}
     
     try:

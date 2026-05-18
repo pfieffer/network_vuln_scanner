@@ -13,10 +13,15 @@
               hx-indicator="#scanLoading">
 
             <div class="space-y-6">
+
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Target Host</label>
-                    <input type="text" name="target" required placeholder="e.g. 192.168.1.1 or example.com"
+                    <label for="target" class="block text-sm font-medium text-gray-300 mb-2">Target Host</label>
+                    <input type="text" id="target" name="target" required
+                           value="{{ target|default('') }}"
+                           placeholder="e.g. 192.168.1.1, 10.0.0.0/24, or example.com"
+                           aria-label="Target host IP address, CIDR range, or domain name"
                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
+                    <p class="text-xs text-gray-400 mt-1">Supports IPv4, IPv6, CIDR notation (192.168.1.0/24), and domain names</p>
                 </div>
 
                 <div>
@@ -54,9 +59,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Custom Ports (comma-separated)</label>
-                    <input type="text" name="ports" placeholder="e.g. 22,80,443,8080,3306"
+                    <label for="ports" class="block text-sm font-medium text-gray-300 mb-2">Custom Ports (optional)</label>
+                    <input type="text" id="ports" name="ports"
+                           value="{{ ports|default('') }}"
+                           placeholder="e.g. 22,80,443,8080,3000-3010"
+                           aria-label="Custom ports to scan, comma or space-separated, supports ranges"
                            class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono">
+                    <p class="text-xs text-gray-400 mt-1">Comma/space-separated: 22,80,443 or ranges: 8000-9000</p>
                 </div>
 
                 <div class="rounded-xl border border-red-700 bg-red-900/20 p-4 text-sm text-red-100">

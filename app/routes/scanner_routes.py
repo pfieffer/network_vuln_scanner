@@ -10,6 +10,8 @@ from flask_login import current_user, login_required
 
 from app.models import ScanSession, ScanAudit, db
 from app.rbac import permission_required, role_required
+from app.validators import validate_target, validate_ports, sanitize_error_message, ValidationError
+from app.utils.scanner_utils import calculate_severity, is_tls_candidate  # ← CHANGED
 from scanner.credential_checker import check_default_credentials
 from scanner.port_scanner import scan_ports
 from scanner.service_detector import identify_services
@@ -52,60 +54,33 @@ def history():
     scans = ScanSession.query.order_by(ScanSession.created_at.desc()).all()
     return render_template('scan_history.html', scans=scans)
 
-
-def calculate_severity(results):
-    """Calculate severity based on findings."""
-    score = 0
-
-    if results['open_ports']:
-        score += len(results['open_ports']) * 2
-
-    tls_results = results.get('tls')
-    if tls_results:
-        if isinstance(tls_results, dict):
-            if any(not port_data.get('valid', True) for port_data in tls_results.values()):
-                score += 10
-        elif not tls_results.get('valid', True):
-            score += 10
-
-    if results['creds'] and results['creds'].get('vulnerable', False):
-        score += 15
-
-    if score >= 20:
-        return 'critical'
-    if score >= 10:
-        return 'high'
-    if score >= 5:
-        return 'medium'
-    return 'low'
-
-
-def is_tls_candidate(port, service_info=None):
-    """Return True if the port/service is likely TLS-capable."""
-    tls_ports = {443, 8443, 993, 995, 465, 636, 990, 992, 587}
-    if port in tls_ports:
-        return True
-
-    if not service_info:
-        return False
-
-    service_name = str(service_info.get('service', '')).lower()
-    product = str(service_info.get('product', '')).lower()
-    tls_indicators = ('https', 'ssl', 'tls', 'ldaps', 'ftps', 'smtps', 'imaps', 'pop3s', 'secure')
-    return any(keyword in service_name for keyword in tls_indicators) or any(keyword in product for keyword in tls_indicators)
-
-
 @scanner_bp.route('/run', methods=['POST'])
 @login_required
 @permission_required('scan')
 def run_scan():
     """Run a new scan on the target."""
-    target = request.form.get('target')
+    target = request.form.get('target', '').strip()
     scan_types = request.form.getlist('scan_type')
     consent = request.form.get('scan_consent')
+    ports_input = request.form.get('ports', '').strip()
 
     if not consent:
-        abort(400, description='Authorization confirmation is required before running a scan.')
+        return render_template('scan_results_error.html',
+                           error_message='Authorization confirmation is required before running a scan.'), 200
+
+    try:
+        target = validate_target(target)
+    except ValidationError as e:
+        return render_template('scan_results_error.html',
+                           error_message=str(e)), 200
+
+    custom_ports = None
+    if ports_input:
+        try:
+            custom_ports = validate_ports(ports_input)
+        except ValidationError as e:
+            return render_template('scan_results_error.html',
+                               error_message=str(e)), 200
 
     audit = ScanAudit(
         user_id=current_user.id,
@@ -127,6 +102,8 @@ def run_scan():
     print(f"\n{'=' * 50}")
     print(f"🔍 SCANNING: {target}")
     print(f"📊 Scan types: {scan_types}")
+    if custom_ports:
+        print(f"📌 Custom ports: {custom_ports}")
     print(f"{'=' * 50}\n")
 
     results = {'target': target, 'open_ports': [], 'services': [], 'tls': None, 'creds': None}
@@ -134,7 +111,10 @@ def run_scan():
     try:
         if 'port' in scan_types:
             print("🔓 Running port scan...")
-            ports = scan_ports(target)
+            if custom_ports:
+                ports = scan_ports(target, ports=custom_ports)
+            else:
+                ports = scan_ports(target)
             print(f"✅ Ports found: {ports}")
             results['open_ports'] = ports
 
@@ -202,7 +182,7 @@ def run_scan():
     except Exception as e:
         audit.status = 'failed'
         audit.completed_at = datetime.utcnow()
-        audit.notes = f'Scan failed: {e}'
+        audit.notes = f'Scan failed: {sanitize_error_message(e)}'
         db.session.commit()
         raise
 
