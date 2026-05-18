@@ -46,6 +46,7 @@ def history():
 
 
 def calculate_severity(results):
+    
     """Calculate severity based on findings."""
     score = 0
 

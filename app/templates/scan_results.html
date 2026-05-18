@@ -43,8 +43,17 @@
                 <div class="mb-3">
                     <span class="font-mono text-white">Port {{ port }}:</span>
                     <span class="text-gray-300 ml-2">{{ svc.service }}</span>
-                    {% if svc.version %}
-                    <p class="text-xs text-gray-500 mt-1 font-mono truncate max-w-md">{{ svc.version[:100] }}...</p>
+                    {% if svc.product and svc.product != svc.service %}
+                    <span class="text-gray-400 ml-2">({{ svc.product }})</span>
+                    {% endif %}
+                    {% if svc.version and svc.version != 'N/A' %}
+                    <p class="text-xs text-gray-500 mt-1 font-mono truncate max-w-md">Version: {{ svc.version[:100] }}</p>
+                    {% endif %}
+                    {% if svc.extra_info %}
+                    <p class="text-xs text-indigo-300 mt-1 font-mono truncate max-w-md">{{ svc.extra_info[:120] }}{% if svc.extra_info|length > 120 %}...{% endif %}</p>
+                    {% endif %}
+                    {% if svc.protocol %}
+                    <p class="text-xxs text-gray-500 mt-0.5 font-mono">Protocol: {{ svc.protocol|upper }}</p>
                     {% endif %}
                 </div>
                 {% endfor %}

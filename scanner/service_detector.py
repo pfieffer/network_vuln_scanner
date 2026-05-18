@@ -25,51 +25,57 @@ def identify_services(target, ports):
         
         host_data = nm[host_key]
         
-        # ✅ Port data is under ['tcp'] key!
-        if 'tcp' not in host_data:
-            return {'service': 'Error', 'banner': 'No TCP data found'}
+        protocols = [proto for proto in ('tcp', 'udp') if proto in host_data]
+        if not protocols:
+            return {'service': 'Error', 'banner': 'No TCP/UDP data found'}
         
-        tcp_data = host_data['tcp']
-        print(f"📋 TCP ports found: {list(tcp_data.keys())}")
-        
-        for port in ports:
-            try:
-                port_key = int(port)
-                
-                if port_key not in tcp_data:
-                    print(f"  ⚠️ Port {port}: Not in TCP data")
+        for protocol in protocols:
+            port_block = host_data.get(protocol, {})
+            print(f"📋 {protocol.upper()} ports found: {list(port_block.keys())}")
+            
+            for port in ports:
+                try:
+                    port_key = int(port)
+                    
+                    if port_key not in port_block:
+                        print(f"  ⚠️ Port {port}/{protocol}: Not in {protocol.upper()} data")
+                        continue
+                    
+                    port_data = port_block[port_key]
+                    print(f"  📦 Port {port}/{protocol} data: {port_data}")
+                    
+                    service_name = (
+                        port_data.get('name') or
+                        port_data.get('product') or
+                        port_data.get('service') or
+                        'unknown'
+                    )
+                    
+                    product = port_data.get('product') or 'unknown'
+                    
+                    version_info = port_data.get('version') or ''
+                    extra_info = port_data.get('extrainfo') or ''
+                    if isinstance(version_info, list):
+                        version_info = ' '.join(map(str, version_info))
+                    if isinstance(extra_info, list):
+                        extra_info = ' '.join(map(str, extra_info))
+                    
+                    services[port] = {
+                        'service': str(service_name),
+                        'product': str(product) if product else 'unknown',
+                        'version': str(version_info) if version_info else 'N/A',
+                        'extra_info': str(extra_info) if extra_info else None,
+                        'protocol': protocol,
+                        'reason': port_data.get('reason'),
+                        'tunnel': port_data.get('tunnel'),
+                        'conf': port_data.get('conf'),
+                    }
+                    
+                    print(f"  ✅ Port {port}/{protocol}: {service_name} {product} {version_info}")
+                    
+                except Exception as e:
+                    print(f"  ⚠️ Port {port}/{protocol}: Error - {e}")
                     continue
-                
-                port_data = tcp_data[port_key]
-                print(f"  📦 Port {port} data: {port_data}")
-                
-                # Extract service name
-                service_name = (
-                    port_data.get('name', 'unknown') or
-                    port_data.get('product', 'unknown') or
-                    'unknown'
-                )
-                
-                # Extract version
-                version_info = (
-                    port_data.get('version', '') or
-                    port_data.get('extrainfo', '') or
-                    ''
-                )
-                
-                if isinstance(version_info, list):
-                    version_info = ' '.join(map(str, version_info))
-                
-                services[port] = {
-                    'service': str(service_name),
-                    'version': str(version_info) if version_info else 'N/A'
-                }
-                
-                print(f"  ✅ Port {port}: {service_name} v{version_info}")
-                
-            except Exception as e:
-                print(f"  ⚠️ Port {port}: Error - {e}")
-                continue
         
         print(f"📊 Services found: {services}")
         return services
