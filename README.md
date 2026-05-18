@@ -109,6 +109,16 @@ python3 -m http.server 8000
 
 Then scan `localhost` or `127.0.0.1`.
 
+## Responsible Disclosure and Ethical Guidelines
+
+- Only scan targets you own or for which you have explicit written authorization.
+- Do not scan public-facing hosts or third-party networks without permission.
+- Use this tool for defensive testing, research, and lab environments only.
+- Do not exploit vulnerabilities or attempt unauthorized access during scanning.
+- Report findings privately and responsibly to the asset owner or authorized party.
+- Keep scan data confidential and avoid sharing sensitive results without permission.
+- If you are unsure whether you are authorized, do not perform the scan.
+
 ## HTTPS Localhost Scan
 
 To test HTTPS scanning locally, create a self-signed certificate and key using OpenSSL:
