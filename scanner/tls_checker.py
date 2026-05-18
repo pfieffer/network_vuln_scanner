@@ -3,7 +3,7 @@ import socket
 from datetime import datetime
 
 def check_tls(target, ports, timeout=3):
-    """Check TLS certificate validity on ALL specified ports."""
+    """Check TLS certificate validity on candidate ports."""
     results = {}
     
     for port in ports:
@@ -13,18 +13,25 @@ def check_tls(target, ports, timeout=3):
                 with context.wrap_socket(sock, server_hostname=target) as ssock:
                     cert = ssock.getpeercert()
                     
-                    issuer = dict(x[0] for x in cert['issuer'])
-                    subject = dict(x[0] for x in cert['subject'])
+                    issuer = dict(x[0] for x in cert.get('issuer', []))
+                    subject = dict(x[0] for x in cert.get('subject', []))
+                    san = cert.get('subjectAltName', [])
+                    serial_number = cert.get('serialNumber')
                     
-                    # Parse expiry
                     expiry_date = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
                     
+                    cipher = ssock.cipher()
                     results[port] = {
                         'valid': True,
                         'issuer': issuer.get('CommonName', 'Unknown'),
                         'subject': subject.get('CommonName', 'Unknown'),
                         'expiry': expiry_date.strftime('%Y-%m-%d'),
-                        'version': cert['version']
+                        'version': cert.get('version'),
+                        'protocol': ssock.version(),
+                        'cipher': cipher[0] if cipher else None,
+                        'cipher_bits': cipher[2] if cipher else None,
+                        'subject_alt_names': [name for name in san if isinstance(name, tuple)],
+                        'serial_number': serial_number,
                     }
                     print(f"  ✅ TLS valid on port {port}: {issuer.get('CommonName', 'Unknown')}")
                     

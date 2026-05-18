@@ -46,15 +46,19 @@ def history():
 
 
 def calculate_severity(results):
-    
     """Calculate severity based on findings."""
     score = 0
 
     if results['open_ports']:
         score += len(results['open_ports']) * 2
 
-    if results['tls'] and not results['tls'].get('valid', True):
-        score += 10
+    tls_results = results.get('tls')
+    if tls_results:
+        if isinstance(tls_results, dict):
+            if any(not port_data.get('valid', True) for port_data in tls_results.values()):
+                score += 10
+        elif not tls_results.get('valid', True):
+            score += 10
 
     if results['creds'] and results['creds'].get('vulnerable', False):
         score += 15
@@ -66,6 +70,21 @@ def calculate_severity(results):
     if score >= 5:
         return 'medium'
     return 'low'
+
+
+def is_tls_candidate(port, service_info=None):
+    """Return True if the port/service is likely TLS-capable."""
+    tls_ports = {443, 8443, 993, 995, 465, 636, 990, 992, 587}
+    if port in tls_ports:
+        return True
+
+    if not service_info:
+        return False
+
+    service_name = str(service_info.get('service', '')).lower()
+    product = str(service_info.get('product', '')).lower()
+    tls_indicators = ('https', 'ssl', 'tls', 'ldaps', 'ftps', 'smtps', 'imaps', 'pop3s', 'secure')
+    return any(keyword in service_name for keyword in tls_indicators) or any(keyword in product for keyword in tls_indicators)
 
 
 @scanner_bp.route('/run', methods=['POST'])
@@ -96,11 +115,28 @@ def run_scan():
         results['services'] = services
 
     if 'tls' in scan_types:
-        print("🔐 Running TLS checks...")
-        tls_results = check_tls(target, results['open_ports'])
-        if tls_results:
-            results['tls'] = tls_results
+        print("🔐 Evaluating TLS candidate ports...")
+        tls_ports = []
+        services = results.get('services')
+
+        if isinstance(services, dict):
+            for port_key, svc in services.items():
+                try:
+                    port = int(port_key)
+                except (TypeError, ValueError):
+                    continue
+                if is_tls_candidate(port, svc):
+                    tls_ports.append(port)
+
+        if not tls_ports:
+            tls_ports = [port for port in results['open_ports'] if is_tls_candidate(port)]
+
+        if tls_ports:
+            print(f"🔐 Running TLS checks on candidate ports: {tls_ports}")
+            tls_results = check_tls(target, tls_ports)
+            results['tls'] = tls_results if tls_results else None
         else:
+            print("⚠️ No TLS candidate ports detected; skipping TLS checks.")
             results['tls'] = None
 
     if 'creds' in scan_types and 80 in results['open_ports']:
@@ -153,13 +189,17 @@ def export_csv(scan_id):
     output = StringIO()
     writer = csv.writer(output)
     writer.writerow(['Target', 'Type', 'Severity', 'Open Ports', 'Services', 'TLS Valid', 'Creds Found'])
+    tls_info = results.get('tls', {}) or {}
+    tls_valid = False
+    if isinstance(tls_info, dict) and tls_info:
+        tls_valid = all(port_data.get('valid', False) for port_data in tls_info.values())
     writer.writerow([
         results.get('target', ''),
         scan.scan_type,
         results.get('severity', 'low'),
         ','.join(map(str, results.get('open_ports', []))),
         str(results.get('services', [])),
-        str(results.get('tls', {}).get('valid', False)),
+        str(tls_valid),
         str(len(results.get('creds', {}).get('findings', [])) > 0),
     ])
 
