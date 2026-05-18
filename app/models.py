@@ -101,3 +101,32 @@ class ScanSession(db.Model):
 
     def __repr__(self):
         return f'<Scan {self.target} by {self.user.username}>'
+
+
+class ScanAudit(db.Model):
+    __tablename__ = 'scan_audit'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    scan_session_id = db.Column(db.Integer, db.ForeignKey('scan_session.id'), nullable=True)
+    target = db.Column(db.String(256), nullable=False)
+    scan_type = db.Column(db.String(100), nullable=False)
+    scan_consent = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(50), nullable=False, default='requested')
+    request_ip = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.String(256), nullable=True)
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    notes = db.Column(db.String(256), nullable=True)
+
+    user = db.relationship('User', backref=db.backref('audit_entries', lazy='dynamic'))
+    scan_session = db.relationship('ScanSession', backref=db.backref('audit_entry', uselist=False))
+
+    @property
+    def duration_seconds(self):
+        if self.started_at and self.completed_at:
+            return int((self.completed_at - self.started_at).total_seconds())
+        return None
+
+    def __repr__(self):
+        return f'<ScanAudit {self.target} by {self.user.username} [{self.status}]>'

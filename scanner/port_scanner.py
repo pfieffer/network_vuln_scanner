@@ -12,7 +12,20 @@ else:
     print(f"⚠️ nmap not found at {nmap_path}")
 
 def scan_ports(target, ports=None, timeout=1):
-    """Scan ports using nmap library with error handling."""
+    """Scan ports using nmap library with error handling.
+    
+    IMPORTANT: Target and ports are pre-validated by the route handler using app.validators
+    module. This function assumes inputs are safe to pass to nmap.
+    
+    Args:
+        target (str): Pre-validated target IP, CIDR, domain, or IPv6 address
+        ports (list, optional): Pre-validated list of integers (1-65535). 
+                               Defaults to common ports if not specified.
+        timeout (int): nmap timeout in seconds
+        
+    Returns:
+        list: List of open ports found on target
+    """
     if ports is None:
         ports = [22, 80, 443, 4443, 8000, 8080, 8081, 3306, 5432, 8443]
     
