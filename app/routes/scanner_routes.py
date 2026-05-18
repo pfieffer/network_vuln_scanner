@@ -2,13 +2,14 @@
 
 import csv
 import json
+from datetime import datetime
 from io import StringIO
 
 from flask import Blueprint, Response, make_response, render_template, request, abort
 from flask_login import current_user, login_required
 
-from app.models import ScanSession, db
-from app.rbac import permission_required
+from app.models import ScanSession, ScanAudit, db
+from app.rbac import permission_required, role_required
 from scanner.credential_checker import check_default_credentials
 from scanner.port_scanner import scan_ports
 from scanner.service_detector import identify_services
@@ -33,7 +34,14 @@ def dashboard():
     scans = ScanSession.query.order_by(ScanSession.created_at.desc()).limit(10).all()
     critical_count = sum(1 for s in scans if s.severity == 'critical')
     high_count = sum(1 for s in scans if s.severity == 'high')
-    return render_template('dashboard.html', scans=scans, critical_count=critical_count, high_count=high_count)
+    audit_count = ScanAudit.query.count() if current_user.has_role('admin') else None
+    return render_template(
+        'dashboard.html',
+        scans=scans,
+        critical_count=critical_count,
+        high_count=high_count,
+        audit_count=audit_count,
+    )
 
 
 @scanner_bp.route('/history')
@@ -99,6 +107,23 @@ def run_scan():
     if not consent:
         abort(400, description='Authorization confirmation is required before running a scan.')
 
+    audit = ScanAudit(
+        user_id=current_user.id,
+        target=target,
+        scan_type=','.join(scan_types),
+        scan_consent=True,
+        status='requested',
+        request_ip=request.remote_addr,
+        user_agent=request.headers.get('User-Agent'),
+        requested_at=datetime.utcnow(),
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    audit.started_at = datetime.utcnow()
+    audit.status = 'running'
+    db.session.commit()
+
     print(f"\n{'=' * 50}")
     print(f"🔍 SCANNING: {target}")
     print(f"📊 Scan types: {scan_types}")
@@ -106,66 +131,89 @@ def run_scan():
 
     results = {'target': target, 'open_ports': [], 'services': [], 'tls': None, 'creds': None}
 
-    if 'port' in scan_types:
-        print("🔓 Running port scan...")
-        ports = scan_ports(target)
-        print(f"✅ Ports found: {ports}")
-        results['open_ports'] = ports
+    try:
+        if 'port' in scan_types:
+            print("🔓 Running port scan...")
+            ports = scan_ports(target)
+            print(f"✅ Ports found: {ports}")
+            results['open_ports'] = ports
 
-    if 'service' in scan_types and results['open_ports']:
-        print("🔧 Running service detection...")
-        services = identify_services(target, results['open_ports'])
-        print(f"✅ Services: {services}")
-        results['services'] = services
+        if 'service' in scan_types and results['open_ports']:
+            print("🔧 Running service detection...")
+            services = identify_services(target, results['open_ports'])
+            print(f"✅ Services: {services}")
+            results['services'] = services
 
-    if 'tls' in scan_types:
-        print("🔐 Evaluating TLS candidate ports...")
-        tls_ports = []
-        services = results.get('services')
+        if 'tls' in scan_types:
+            print("🔐 Evaluating TLS candidate ports...")
+            tls_ports = []
+            services = results.get('services')
 
-        if isinstance(services, dict):
-            for port_key, svc in services.items():
-                try:
-                    port = int(port_key)
-                except (TypeError, ValueError):
-                    continue
-                if is_tls_candidate(port, svc):
-                    tls_ports.append(port)
+            if isinstance(services, dict):
+                for port_key, svc in services.items():
+                    try:
+                        port = int(port_key)
+                    except (TypeError, ValueError):
+                        continue
+                    if is_tls_candidate(port, svc):
+                        tls_ports.append(port)
 
-        if not tls_ports:
-            tls_ports = [port for port in results['open_ports'] if is_tls_candidate(port)]
+            if not tls_ports:
+                tls_ports = [port for port in results['open_ports'] if is_tls_candidate(port)]
 
-        if tls_ports:
-            print(f"🔐 Running TLS checks on candidate ports: {tls_ports}")
-            tls_results = check_tls(target, tls_ports)
-            results['tls'] = tls_results if tls_results else None
-        else:
-            print("⚠️ No TLS candidate ports detected; skipping TLS checks.")
-            results['tls'] = None
+            if tls_ports:
+                print(f"🔐 Running TLS checks on candidate ports: {tls_ports}")
+                tls_results = check_tls(target, tls_ports)
+                results['tls'] = tls_results if tls_results else None
+            else:
+                print("⚠️ No TLS candidate ports detected; skipping TLS checks.")
+                results['tls'] = None
 
-    if 'creds' in scan_types and 80 in results['open_ports']:
-        print("⚠️ Running credential check...")
-        creds = check_default_credentials(target)
-        print(f"✅ Creds: {creds}")
-        results['creds'] = creds
+        if 'creds' in scan_types and 80 in results['open_ports']:
+            print("⚠️ Running credential check...")
+            creds = check_default_credentials(target)
+            print(f"✅ Creds: {creds}")
+            results['creds'] = creds
 
-    results['severity'] = calculate_severity(results)
+        results['severity'] = calculate_severity(results)
 
-    scan_session = ScanSession(
-        user_id=current_user.id,
-        target=target,
-        scan_type=','.join(scan_types),
-        results=json.dumps(results),
-        severity=results['severity'],
-    )
-    db.session.add(scan_session)
-    db.session.commit()
+        scan_session = ScanSession(
+            user_id=current_user.id,
+            target=target,
+            scan_type=','.join(scan_types),
+            results=json.dumps(results),
+            severity=results['severity'],
+        )
+        db.session.add(scan_session)
+        db.session.commit()
 
-    print(f"💾 Scan saved with ID: {scan_session.id}")
-    print(f"📊 Final results: {results}")
-    print(f"{'=' * 50}\n")
+        audit.scan_session_id = scan_session.id
+        audit.status = 'completed'
+        audit.completed_at = datetime.utcnow()
+        audit.notes = 'Scan completed successfully.'
+        db.session.commit()
 
-    return render_template('scan_results.html', results=results, scan=scan_session, scan_id=scan_session.id)
+        print(f"💾 Scan saved with ID: {scan_session.id}")
+        print(f"📊 Final results: {results}")
+        print(f"{'=' * 50}\n")
+
+        return render_template('scan_results.html', results=results, scan=scan_session, scan_id=scan_session.id)
+
+    except Exception as e:
+        audit.status = 'failed'
+        audit.completed_at = datetime.utcnow()
+        audit.notes = f'Scan failed: {e}'
+        db.session.commit()
+        raise
+
+
+@scanner_bp.route('/audit')
+@login_required
+@role_required('admin')
+def audit_log():
+    """Render the audit log page for admin users."""
+    audits = ScanAudit.query.order_by(ScanAudit.requested_at.desc()).all()
+    return render_template('audit_log.html', audits=audits)
 
 
 @scanner_bp.route('/detail/<int:scan_id>')
