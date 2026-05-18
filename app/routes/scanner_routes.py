@@ -94,6 +94,10 @@ def run_scan():
     """Run a new scan on the target."""
     target = request.form.get('target')
     scan_types = request.form.getlist('scan_type')
+    consent = request.form.get('scan_consent')
+
+    if not consent:
+        abort(400, description='Authorization confirmation is required before running a scan.')
 
     print(f"\n{'=' * 50}")
     print(f"🔍 SCANNING: {target}")
